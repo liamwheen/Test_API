@@ -25,7 +25,7 @@ avoids too many assumptions and allows for prediction intervals to be
 calculated. The prediction for grade $j$ at time $i$ can be expressed as
 
 $$
-\hat{y}^j_{t+1} = \frac{\sum_{i=0}^{2} \exp(-i) \cdot y_{t-i}}{\sum_{i=0}^{2}
+\hat{y}^j_{t+1} = \frac{\sum_{i=0}^{2} \exp(-i) \cdot y^j_{t-i}}{\sum_{i=0}^{2}
 \exp(-i)},
 $$
 
