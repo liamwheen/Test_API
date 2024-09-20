@@ -1,6 +1,12 @@
 import numpy as np
-import matplotlib.pyplot as plt
 from scipy import stats
+from io import BytesIO
+import base64
+import matplotlib
+matplotlib.use('SVG')
+import matplotlib.pyplot as plt
+plt.rcParams['font.family'] = 'DejaVu Sans'
+plt.rcParams['text.usetex'] = False
 
 def predict(qual, tot):
     '''Predict sept grades based on the previous 3 months, exponentially weighted
@@ -51,41 +57,45 @@ def calc_interval(qual, tot):
     
     return np.column_stack((predicted_values, lower_bound, upper_bound))
 
-def plot_prediction(qual, tot):
-    plt.figure(figsize=(12, 6))
-    prediction = predict(qual, tot)
-    for i in range(prediction.shape[0]):
-        plt.plot(prediction[i], '-o', label=f'Type {i+1}' 
-                 if i < prediction.shape[0]-1 else 'Total')
-
-    # Calculate prediction intervals
-    intervals = calc_interval(qual, tot)
-
-    # Add error bars for the last point (September prediction) for each qual type
-    for i in range(qual.shape[0]):
-        plt.errorbar(3+(i-qual.shape[0]/2+0.5)/80, intervals[i, 0], 
-                     yerr=[[intervals[i, 0] - intervals[i, 1]], 
-                           [intervals[i, 2] - intervals[i, 0]]],
-                            fmt=f'C{i}.', capsize=5)
-
-    plt.title('Grade Prediction for September with 95% Confidence Intervals')
-    plt.xlabel('Month')
-    plt.ylabel('Value')
-    plt.xticks(range(4), ['June', 'July', 'August', 'September'])
-    plt.legend()
-
-    # Add text for intervals (maybe not worth it)
-    # for i, (pred, lower, upper) in enumerate(intervals):
-    #     plt.text(3.1, pred, f'Type {i+1}: {pred:.0f} ({lower:.0f}-{upper:.0f})', 
-    #              verticalalignment='center')
-
-    plt.grid(True)
-    plt.tight_layout()
-    plt.show()
+def plot_prediction(qual, tot, show=False):
+    try:
+        plt.figure(figsize=(7,5))
+        prediction = predict(qual, tot)
+        for i in range(prediction.shape[0]-1):
+            plt.plot(prediction[i], '-o', label=f'Type {i+1}')
+        plt.plot(prediction[-1], '-o', linewidth=2, label='Prediction', color='black')
+        
+        intervals = calc_interval(qual, tot)
+        for i in range(qual.shape[0]):
+            plt.errorbar(3+(i-qual.shape[0]/2+0.5)/80, intervals[i, 0], 
+                         yerr=[[intervals[i, 0] - intervals[i, 1]], 
+                               [intervals[i, 2] - intervals[i, 0]]],
+                         fmt=f'C{i}.', capsize=5)
+        
+        plt.title('Grade Prediction for September with 95% Intervals')
+        plt.xlabel('Month')
+        plt.ylabel('Value')
+        plt.xticks(range(4), ['June', 'July', 'August', 'September'])
+        plt.legend()
+        plt.grid(True)
+        # plt.tight_layout()
+        if show:
+            return
+        
+        img = BytesIO()
+        plt.savefig(img, format='png', dpi=120)
+        img.seek(0)
+        plot_url = base64.b64encode(img.getvalue()).decode()
+        plt.close()  # Close the plot to free up memory
+        return plot_url
+    except Exception as e:
+        plt.close()  # Ensure the plot is closed even if an error occurs
+        raise e  # Re-raise the exception to be caught in the route handler
 
 if __name__ == '__main__':
     
-# Data if not loaded from database
+    matplotlib.use('TkAgg')
+    # Data if not loaded from database
     rebar = np.array([[ 8724,  9230,  8989],
                       [10880, 11030, 10822],
                       [ 4111,  1557,  4756]])
@@ -112,4 +122,5 @@ if __name__ == '__main__':
 
     for qual,sept_tot in zip([rebar, MBQ, SBQ, CHQ],
                      [rebar_sept_tot, MBQ_sept_tot, SBQ_sept_tot, CHQ_sept_tot]):
-        plot_prediction(qual, sept_tot)
+        plot_prediction(qual, sept_tot, show=True)
+    plt.show()

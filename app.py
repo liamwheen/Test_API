@@ -1,20 +1,20 @@
-from flask import Flask, render_template, request, redirect, url_for, flash
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import text
 from werkzeug.utils import secure_filename
-from predict_sept import predict, calc_interval
+from predict_sept import predict, calc_interval, plot_prediction
 import os
 import pandas as pd
 import numpy as np
 import logging
 
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.WARNING)
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///steel_production.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['SECRET_KEY'] = 'your_secret_key'
+app.config['SECRET_KEY'] = 'key'
 app.config['UPLOAD_FOLDER'] = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'uploads')
 
 # Ensure the upload folder exists
@@ -242,72 +242,67 @@ def process_steel_grade_production(file_path):
         logger.error(f"Error in process_steel_grade_production: {str(e)}", exc_info=True)
         raise
 
-
-@app.route('/predict_september', methods=['POST'])
-def predict_september():
-    # Query the steel_grade_production and monthly_plan tables
+def generate_prediction_data(db):
     query_production = text("SELECT * FROM steel_grade_production")
-    query_monthly = text("SELECT quality_group, heats FROM monthly_plan")  # Adjust this query as needed
-
+    query_monthly = text("SELECT quality_group, heats FROM monthly_plan")
+    
     with db.engine.connect() as connection:
-        # Fetch and process production data
         production_data = connection.execute(query_production)
         quality_arrays = {}
+        grade_data = {}
         for row in production_data:
-            quality_group = row[2]  # Quality group (third column)
-            production = row[4]     # Production (fourth column)
+            print(row)
+            quality_group, grade, production = row[2:5]
             quality_arrays.setdefault(quality_group, []).append(production)
+            grade_data.setdefault(quality_group, []).append(grade)
 
-        # Convert lists to NumPy arrays
+        # Save just the unique grades for each quality group (in order)
+        for group in grade_data.keys():
+            grade_data[group] = list(dict.fromkeys(grade_data[group]))
         quality_arrays = {quality: np.array(values).reshape(-1, 3) for quality, values in quality_arrays.items()}
+        
+        monthly_data = {row[0]: row[1] for row in connection.execute(query_monthly)}
+    
+    return quality_arrays, monthly_data, grade_data
 
-        # Fetch and process monthly data
-        monthly_data = {}
-        monthly_results = connection.execute(query_monthly)
-        for row in monthly_results:
-            quality_group = row[0]  # Quality group (first column)
-            last_column_value = row[1]  # Last column value (heats)
-            monthly_data[quality_group] = last_column_value  # Only keep the last entry
+@app.route('/predict_september', methods=['GET', 'POST'])
+def predict_september():
+    try:
+        quality_arrays, monthly_data, grade_data = generate_prediction_data(db)
+        
+        predictions = []
+        for quality, data in quality_arrays.items():
+            prediction = predict(data, monthly_data[quality] * 100)[:-1, -1]
+            interval_data = calc_interval(data, monthly_data[quality] * 100)[:, 1:]
+            predictions.append({
+                'quality': quality,
+                'grades': grade_data[quality],
+                'prediction': [f"{value:.2f}" for value in prediction],
+                'confidence': [[f"{conf[0]:.2f}", f"{conf[1]:.2f}"] for conf in interval_data]
+            })
+        
+        return render_template('prediction_table.html', predictions=predictions)
+    except Exception as e:
+        logger.error(f"Error in predict_september: {str(e)}", exc_info=True)
+        return jsonify({'error': str(e)}), 500
 
-    # flash(f'September prediction: {quality_arrays}, Monthly Data: {monthly_data}')
-
-    table_html = """
-    <table style="width: 100%; border-collapse: collapse;">
-        <thead>
-            <tr>
-                <th style="border: 1px solid black; padding: 8px;">Quality</th>
-                <th style="border: 1px solid black; padding: 8px;">Prediction</th>
-                <th style="border: 1px solid black; padding: 8px;">Confidence Interval</th>
-            </tr>
-        </thead>
-        <tbody>
-    """
-
-    for quality in quality_arrays.keys():
-        # Get predictions and confidence intervals
-        prediction = predict(quality_arrays[quality], monthly_data[quality] * 100)[:-1, -1]
-        interval_data = calc_interval(quality_arrays[quality], monthly_data[quality] * 100)[:, 1:]
-
-        # Format prediction and confidence intervals
-        prediction_str = ', '.join(f"{value:.2f}" for value in prediction)
-        confidence_str = ', '.join(f"[{conf[0]:.2f}, {conf[1]:.2f}]" for conf in interval_data)
-
-        # Add a row to the table for this quality
-        table_html += f"""
-            <tr>
-                <td style="border: 1px solid black; padding: 8px;">{quality}</td>
-                <td style="border: 1px solid black; padding: 8px;">{prediction_str}</td>
-                <td style="border: 1px solid black; padding: 8px;">{confidence_str}</td>
-            </tr>
-    """
-
-    # Close the table
-    table_html += """
-        </tbody>
-    </table>
-    """
-
-    return render_template('table.html', table_html=table_html)
+@app.route('/get_plot/<quality>', methods=['GET'])
+def get_plot(quality):
+    try:
+        quality_arrays, monthly_data, _ = generate_prediction_data(db)
+        
+        if quality not in quality_arrays:
+            return jsonify({'error': 'Quality not found'}), 404
+        
+        data = quality_arrays[quality]
+        tot = monthly_data[quality] * 100
+        
+        plot_url = plot_prediction(data, tot)
+        
+        return jsonify({'plot_url': plot_url})
+    except Exception as e:
+        logger.error(f"Error in get_plot: {str(e)}", exc_info=True)
+        return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
     app.run(debug=True)

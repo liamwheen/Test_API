@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>September Predictions</title>
+    <style>
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        th, td {
+            border: 1px solid black;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        .plot-container {
+            margin-top: 20px;
+        }
+        .plot-container img {
+            max-width: 100%;
+            height: auto;
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+</head>
+<body>
+    <h1>September Predictions</h1>
+    <table>
+        <thead>
+            <tr>
+                <th>Quality</th>
+                <th>Prediction</th>
+                <th>Confidence Interval</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in predictions %}
+            <tr>
+                <td>{{ item.quality }}<br>({{ item.grades | join(', ') }})</td>
+                <td>{{ item.prediction|join(', ') }}</td>
+                <td>
+                    {% for interval in item.confidence %}
+                    [{{ interval[0] }}, {{ interval[1] }}]{% if not loop.last %}, {% endif %}
+                    {% endfor %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    
+    <h2>Prediction Plots (May need reloading a couple of times)</h2>
+    {% for item in predictions %}
+    <div class="plot-container" id="plot-{{ item.quality }}">
+        <h3>{{ item.quality }}</h3>
+        <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="Loading plot for {{ item.quality }}">
+    </div>
+    {% endfor %}
+
+    <script>
+        $(document).ready(function() {
+            {% for item in predictions %}
+            $.get('/get_plot/{{ item.quality }}', function(data) {
+                if (data.error) {
+                    console.error('Error loading plot for {{ item.quality }}:', data.error);
+                    $('#plot-{{ item.quality }} img').attr('alt', 'Error loading plot');
+                } else {
+                    $('#plot-{{ item.quality }} img').attr('src', 'data:image/png;base64,' + data.plot_url);
+                }
+            }).fail(function() {
+                console.error('Failed to load plot for {{ item.quality }}');
+                $('#plot-{{ item.quality }} img').attr('alt', 'Failed to load plot');
+            });
+            {% endfor %}
+        });
+    </script>
+</body>
+</html>
