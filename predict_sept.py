@@ -1,4 +1,5 @@
 import numpy as np
+import matplotlib.pyplot as plt
 from scipy import stats
 
 def predict(qual, tot):
@@ -51,44 +52,36 @@ def calc_interval(qual, tot):
     return np.column_stack((predicted_values, lower_bound, upper_bound))
 
 def plot_prediction(qual, tot):
-    import io
-    import base64
-    import matplotlib.pyplot as plt
-
-    fig, ax = plt.subplots(figsize=(12, 6))
+    plt.figure(figsize=(12, 6))
     prediction = predict(qual, tot)
     for i in range(prediction.shape[0]):
-        ax.plot(prediction[i], '-o', label=f'Type {i+1}' 
+        plt.plot(prediction[i], '-o', label=f'Type {i+1}' 
                  if i < prediction.shape[0]-1 else 'Total')
+
     # Calculate prediction intervals
     intervals = calc_interval(qual, tot)
+
     # Add error bars for the last point (September prediction) for each qual type
     for i in range(qual.shape[0]):
-        ax.errorbar(3+(i-qual.shape[0]/2+0.5)/80, intervals[i, 0], 
+        plt.errorbar(3+(i-qual.shape[0]/2+0.5)/80, intervals[i, 0], 
                      yerr=[[intervals[i, 0] - intervals[i, 1]], 
                            [intervals[i, 2] - intervals[i, 0]]],
                             fmt=f'C{i}.', capsize=5)
-    ax.set_title('Grade Prediction for September with 95% Confidence Intervals')
-    ax.set_xlabel('Month')
-    ax.set_ylabel('Value')
-    ax.set_xticks(range(4))
-    ax.set_xticklabels(['June', 'July', 'August', 'September'])
-    ax.legend()
-    ax.grid(True)
+
+    plt.title('Grade Prediction for September with 95% Confidence Intervals')
+    plt.xlabel('Month')
+    plt.ylabel('Value')
+    plt.xticks(range(4), ['June', 'July', 'August', 'September'])
+    plt.legend()
+
+    # Add text for intervals (maybe not worth it)
+    # for i, (pred, lower, upper) in enumerate(intervals):
+    #     plt.text(3.1, pred, f'Type {i+1}: {pred:.0f} ({lower:.0f}-{upper:.0f})', 
+    #              verticalalignment='center')
+
+    plt.grid(True)
     plt.tight_layout()
-    
-    buffer = io.BytesIO()
-    fig.savefig(buffer, format='png')
-    buffer.seek(0)
-    
-    # Encode the bytes to base64
-    plot_data = base64.b64encode(buffer.getvalue()).decode()
-    
-    # Cleanup
-    plt.close(fig)
-    buffer.close()
-    
-    return plot_data
+    plt.show()
 
 if __name__ == '__main__':
     
@@ -117,3 +110,6 @@ if __name__ == '__main__':
                     [ 308,    0, 2541]])
     CHQ_sept_tot = 2200
 
+    for qual,sept_tot in zip([rebar, MBQ, SBQ, CHQ],
+                     [rebar_sept_tot, MBQ_sept_tot, SBQ_sept_tot, CHQ_sept_tot]):
+        plot_prediction(qual, sept_tot)
