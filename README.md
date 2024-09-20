@@ -8,7 +8,7 @@ can be uploaded and stored in an SQLite database.
 To run the API, execute the following command:
 
 ```bash
-python app.py
+python3 app.py
 ```
 And navigate to `http://127.0.0.1:5000/` in your browser.
 
@@ -36,5 +36,5 @@ where Total is provided by the user.
 A simpler demonstration of the prediction model can be found by running
 
 ```bash
-python predict_sept.py
+python3 predict_sept.py
 ```
