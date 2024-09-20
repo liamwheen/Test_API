@@ -251,7 +251,6 @@ def generate_prediction_data(db):
         quality_arrays = {}
         grade_data = {}
         for row in production_data:
-            print(row)
             quality_group, grade, production = row[2:5]
             quality_arrays.setdefault(quality_group, []).append(production)
             grade_data.setdefault(quality_group, []).append(grade)
