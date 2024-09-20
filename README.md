@@ -32,3 +32,9 @@ $$
 $$
 
 where Total is provided by the user.
+
+A simpler demonstration of the prediction model can be found by running
+
+```bash
+python predict_sept.py
+```
