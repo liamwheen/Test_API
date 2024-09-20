@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block title %}Upload Monthly Plan - Steel Production Planning{% endblock %}
+
+{% block content %}
+    <h1>Upload Monthly Plan</h1>
+    <form method="post" enctype="multipart/form-data">
+        <div>
+            <label for="monthly_file">Select monthly plan file (CSV):</label>
+            <input type="file" id="monthly_file" name="monthly_file" accept=".csv" required>
+        </div>
+        <div>
+            <label for="steel_grade_file">Select steel grade production file (CSV):</label>
+            <input type="file" id="steel_grade_file" name="steel_grade_file" accept=".csv" required>
+        </div>
+        <div>
+            <input type="submit" value="Upload">
+        </div>
+    </form>
+    
+    <h2>Predict September Production</h2>
+    <form action="{{ url_for('predict_september') }}" method="post">
+        <input type="submit" value="Predict September Production">
+    </form>
+{% endblock %}

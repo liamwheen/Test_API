@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+
+{% block title %}Home - Steel Production Planning{% endblock %}
+
+{% block content %}
+    <h1>Steel Production Planning</h1>
+    <p>Welcome to the Steel Production Planning application. Choose an option below:</p>
+    <ul>
+        <li><a href="{{ url_for('upload_daily') }}">Upload Daily Plan</a></li>
+        <li><a href="{{ url_for('upload_monthly') }}">Upload Monthly Plan</a></li>
+    </ul>
+{% endblock %}

@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+
+{% block title %}Upload Daily Plan - Steel Production Planning{% endblock %}
+
+{% block content %}
+    <h1>Upload Daily Plan</h1>
+    <form method="post" enctype="multipart/form-data">
+        <div>
+            <label for="file">Select daily charge schedule file (CSV):</label>
+            <input type="file" id="file" name="file" accept=".csv" required>
+        </div>
+        <div>
+            <input type="submit" value="Upload">
+        </div>
+    </form>
+{% endblock %}
