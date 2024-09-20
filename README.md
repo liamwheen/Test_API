@@ -5,6 +5,11 @@ can be run as an API with a web interface, where the example csv files
 `daily_charge_schedule`, `product_groups_monthly`, and `steel_grade_production`
 can be uploaded and stored in an SQLite database.
 
+Please first run
+```bash
+pip install -r requirements.txt
+```
+
 To run the API, execute the following command:
 
 ```bash
